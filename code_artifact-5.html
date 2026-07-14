@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ミミちゃんのご機嫌とりゲーム</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- アニメーションライブラリ Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <!-- アイコンフォント Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts（かわいい日本語フォント） -->
+    <link href="https://fonts.googleapis.com/css2?family=Kosugi+Maru&family=Mochiropop+One&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kosugi Maru', sans-serif;
+            background: linear-gradient(135deg, #ffeef8 0%, #ffd6e8 100%);
+            min-height: 100vh;
+        }
+        .fancy-title {
+            font-family: 'Mochiropop One', sans-serif;
+        }
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fff5f8;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ffb7d5;
+            border-radius: 3px;
+        }
+        /* ハートの鼓動アニメーション */
+        @keyframes heartPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .pulse-heart {
+            animation: heartPulse 1.2s infinite;
+        }
+        /* ぷかぷか浮かぶアニメーション */
+        @keyframes floating {
+            0% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-8px) scale(1.02); }
+            100% { transform: translateY(0px) scale(1); }
+        }
+        .float-mimi {
+            animation: floating 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-2 md:p-6 text-gray-800">
+
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl border-4 border-pink-200 overflow-hidden relative flex flex-col justify-between" style="min-height: 680px;">
+        
+        <!-- ヘッダー（ご機嫌メーター＆API設定） -->
+        <div class="bg-gradient-to-r from-pink-300 to-rose-300 p-3 flex justify-between items-center text-white border-b-4 border-pink-100">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-paw text-xl animate-bounce"></i>
+                <span class="font-bold tracking-wider text-sm md:text-base fancy-title">ミミちゃんご機嫌ロイヤル</span>
+            </div>
+            <!-- 右側ステータス -->
+            <div class="flex items-center space-x-1.5">
+                <!-- BGM ミュート/再生トグルボタン -->
+                <button id="toggle-bgm" class="bg-white/20 hover:bg-white/40 p-1.5 rounded-full transition w-8 h-8 flex items-center justify-center" title="BGMの再生/一時停止">
+                    <i id="bgm-icon" class="fa-solid fa-volume-xmark text-xs md:text-sm"></i>
+                </button>
+                <!-- ご機嫌度メーター -->
+                <div class="flex items-center space-x-1 bg-pink-500/30 px-2 py-1 rounded-full border border-white/20">
+                    <i class="fa-solid fa-heart text-rose-500 pulse-heart text-xs md:text-sm"></i>
+                    <span id="meter-text" class="font-bold text-[11px] md:text-xs">ご機嫌: 50%</span>
+                </div>
+                <!-- API設定ボタン -->
+                <button id="open-api-modal" class="bg-white/20 hover:bg-white/40 p-1.5 rounded-full transition" title="Gemini APIキーを設定">
+                    <i class="fa-solid fa-gear text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- メイン画面コンテナ -->
+        <div id="game-container" class="flex-grow flex flex-col justify-between p-4 relative">
+            
+            <!-- ステージ 1: 開始（タイトル）画面 -->
+            <div id="setup-screen" class="flex-grow flex flex-col justify-between items-center text-center space-y-4 py-4 animate__animated animate__fadeIn">
+                
+                <div class="space-y-1">
+                    <h1 class="text-2xl md:text-3xl font-bold text-rose-500 fancy-title tracking-wider animate__animated animate__rubberBand">ミミちゃん登場！</h1>
+                    <p class="text-xs text-pink-400 font-bold">スコティッシュフォールドの女の子 (5さい)</p>
+                </div>
+
+                <!-- デフォルメされたミミちゃんのプレビュー表示 -->
+                <div class="relative w-44 h-44 md:w-48 md:h-48 rounded-full border-4 border-pink-200 shadow-lg overflow-hidden bg-gradient-to-b from-pink-50 to-rose-50 flex items-center justify-center float-mimi">
+                    <!-- デフォルメSVG -->
+                    <svg class="w-full h-full p-1" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="100" cy="100" r="90" fill="#fff3f8" />
+                        <path d="M65 125 L135 125 L150 185 L50 185 Z" fill="#ff7ebb" />
+                        <circle cx="75" cy="145" r="2.5" fill="#ffd1e6" />
+                        <circle cx="100" cy="140" r="2.5" fill="#ffd1e6" />
+                        <circle cx="125" cy="145" r="2.5" fill="#ffd1e6" />
+                        <circle cx="85" cy="165" r="2.5" fill="#ffd1e6" />
+                        <circle cx="115" cy="165" r="2.5" fill="#ffd1e6" />
+                        <circle cx="100" cy="170" r="2.5" fill="#ffd1e6" />
+                        <path d="M50 185 Q57 190 65 185 Q72 190 80 185 Q87 190 95 185 Q102 190 110 185 Q117 190 125 185 Q132 190 140 185 Q147 190 150 185" fill="none" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+                        <path d="M50 185 Q57 190 65 185 Q72 190 80 185 Q87 190 95 185 Q102 190 110 185 Q117 190 125 185 Q132 190 140 185 Q147 190 150 185" fill="none" stroke="#f472b6" stroke-width="1.5" stroke-linecap="round"/>
+                        <path d="M132 130 Q152 138 140 150" fill="none" stroke="#fdba74" stroke-width="9.5" stroke-linecap="round" />
+                        <path d="M132 130 Q152 138 140 150" fill="none" stroke="#fbcfe8" stroke-width="4" stroke-linecap="round" />
+                        <path d="M138 146 Q146 142 148 152" fill="none" stroke="#be123c" stroke-width="1.5" />
+                        <path d="M140 152 C140 148, 154 148, 154 152 C154 161, 147 167, 147 167 C147 167, 140 161, 140 152 Z" fill="#e11d48" />
+                        <path d="M143 150 L147 146 L151 150 L147 152 Z" fill="#16a34a" />
+                        <circle cx="144" cy="155" r="0.5" fill="#fef08a" />
+                        <circle cx="150" cy="155" r="0.5" fill="#fef08a" />
+                        <circle cx="147" cy="159" r="0.5" fill="#fef08a" />
+                        <circle cx="144" cy="162" r="0.5" fill="#fef08a" />
+                        <path d="M68 130 Q48 138 60 148" fill="none" stroke="#fdba74" stroke-width="9.5" stroke-linecap="round" />
+                        <path d="M68 130 Q48 138 60 148" fill="none" stroke="#fbcfe8" stroke-width="4" stroke-linecap="round" />
+                        <circle cx="100" cy="124" r="4.5" fill="#db2777" />
+                        <path d="M100 124 Q90 116 91 128 Z" fill="#db2777" />
+                        <path d="M100 124 Q110 116 109 128 Z" fill="#db2777" />
+                        <ellipse cx="100" cy="82" rx="52" ry="43" fill="#fdba74" />
+                        <path d="M100 58 C76 58, 66 104, 100 121 C134 104, 124 58, 100 58 Z" fill="#f9fafb" />
+                        <path d="M100 44 L100 54" fill="none" stroke="#d97706" stroke-width="3" stroke-linecap="round" />
+                        <path d="M92 46 L94 53" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                        <path d="M108 46 L106 53" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                        <path d="M58 76 Q68 74 76 77" fill="none" stroke="#d97706" stroke-width="3.5" stroke-linecap="round" />
+                        <circle cx="60" cy="85" r="2.5" fill="#d97706" />
+                        <path d="M60 85 Q68 84 75 87" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                        <path d="M142 76 Q132 74 124 77" fill="none" stroke="#d97706" stroke-width="3.5" stroke-linecap="round" />
+                        <path d="M140 85 Q132 84 125 87" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                        <path d="M56 49 Q41 43 43 61 Q58 61 58 52 Z" fill="#e28743" stroke="#d97706" stroke-width="1" />
+                        <path d="M51 51 Q45 47 46 57 Z" fill="#fecdd3" />
+                        <path d="M144 49 Q159 43 157 61 Q142 61 142 52 Z" fill="#e28743" stroke="#d97706" stroke-width="1" />
+                        <path d="M149 51 Q155 47 154 57 Z" fill="#fecdd3" />
+                        <circle cx="56" cy="47" r="2.5" fill="#eab308" />
+                        <circle cx="52" cy="47" r="2" fill="white" />
+                        <circle cx="60" cy="47" r="2" fill="white" />
+                        <circle cx="56" cy="43" r="2" fill="white" />
+                        <circle cx="56" cy="51" r="2" fill="white" />
+                        <circle cx="144" cy="47" r="2.5" fill="#eab308" />
+                        <circle cx="140" cy="47" r="2" fill="white" />
+                        <circle cx="148" cy="47" r="2" fill="white" />
+                        <circle cx="144" cy="43" r="2" fill="white" />
+                        <circle cx="144" cy="51" r="2" fill="white" />
+                        <ellipse cx="78" cy="85" rx="10" ry="10" fill="#047857" />
+                        <ellipse cx="78" cy="85" rx="7" ry="7" fill="#10b981" />
+                        <ellipse cx="78" cy="85" rx="4" ry="7" fill="#111827" />
+                        <circle cx="75" cy="81" r="3" fill="white" />
+                        <circle cx="81" cy="89" r="1.2" fill="white" />
+                        <path d="M66 82 Q78 72 90 82" fill="none" stroke="#111827" stroke-width="2.5" stroke-linecap="round" />
+                        <path d="M64 78 L68 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                        <path d="M92 78 L88 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                        <ellipse cx="122" cy="85" rx="10" ry="10" fill="#047857" />
+                        <ellipse cx="122" cy="85" rx="7" ry="7" fill="#10b981" />
+                        <ellipse cx="122" cy="85" rx="4" ry="7" fill="#111827" />
+                        <circle cx="119" cy="81" r="3" fill="white" />
+                        <circle cx="125" cy="89" r="1.2" fill="white" />
+                        <path d="M110 82 Q122 72 134 82" fill="none" stroke="#111827" stroke-width="2.5" stroke-linecap="round" />
+                        <path d="M108 78 L112 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                        <path d="M136 78 L132 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                        <polygon points="97,94 103,94 100,97" fill="#f472b6" />
+                        <path d="M94 99 Q100 103 100 100" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                        <path d="M100 100 Q100 103 106 99" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                        <path d="M97 101 Q100 108 103 101" fill="#f43f5e" />
+                        <circle cx="66" cy="94" r="5" fill="#fca5a5" opacity="0.6" />
+                        <circle cx="134" cy="94" r="5" fill="#fca5a5" opacity="0.6" />
+                        <path d="M55 94 L38 93" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                        <path d="M55 98 L40 100" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                        <path d="M145 94 L162 93" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                        <path d="M145 98 L160 100" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                    </svg>
+                </div>
+
+                <!-- プレイモード選択 -->
+                <div class="w-full px-4 space-y-3">
+                    <!-- 通常モード -->
+                    <button id="start-btn" class="w-full bg-gradient-to-r from-pink-400 to-rose-400 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-3 px-6 rounded-2xl shadow-lg transition transform hover:-translate-y-0.5 text-sm fancy-title flex items-center justify-center space-x-2">
+                        <span>通常クイズであそぶ 🎀</span>
+                    </button>
+
+                    <!-- AI自由おしゃべりモード -->
+                    <button id="start-ai-btn" class="w-full bg-gradient-to-r from-indigo-400 to-purple-400 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3 px-6 rounded-2xl shadow-lg transition transform hover:-translate-y-0.5 text-sm fancy-title flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i>
+                        <span>AI自由おしゃべりモード 🌟</span>
+                    </button>
+                    <p id="ai-mode-badge" class="text-[10px] text-indigo-400 font-bold text-center">※APIキーが必要です</p>
+                </div>
+
+                <!-- リアル猫重ね（オプション） -->
+                <div class="border border-pink-100 rounded-xl p-2 bg-pink-50/30 w-full max-w-xs">
+                    <button id="toggle-upload-btn" class="text-[10px] text-pink-500 font-bold hover:underline focus:outline-none flex items-center justify-center w-full space-x-1">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>うちの猫の写真にする（オプション）</span>
+                    </button>
+                    <div id="upload-section" class="hidden mt-1.5 border-t border-pink-100 pt-1.5 text-center">
+                        <div id="drop-zone" class="w-full border border-dashed border-pink-300 rounded-xl p-2 bg-white hover:bg-pink-50/50 transition cursor-pointer flex flex-col items-center justify-center space-y-1">
+                            <span class="text-[10px] text-gray-500">写真をドロップまたはクリック</span>
+                            <input type="file" id="image-loader" accept="image/*" class="hidden" />
+                            <span id="file-name-display" class="text-[8px] text-gray-400 truncate max-w-xs"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ステージ 2: ゲームプレイ画面 -->
+            <div id="play-screen" class="hidden flex-grow flex flex-col justify-between space-y-3 animate__animated animate__fadeIn">
+                
+                <!-- キャラクター表示エリア -->
+                <div class="relative flex justify-center items-center py-1 flex-grow min-h-[220px]">
+                    <div id="mood-bg" class="absolute w-44 h-44 rounded-full bg-pink-100 blur-2xl opacity-70 transition-all duration-500"></div>
+                    
+                    <div class="relative w-40 h-40 md:w-44 md:h-44 rounded-full border-4 border-pink-300 shadow-xl overflow-hidden bg-pink-50 flex items-center justify-center transition-all duration-300 transform hover:scale-105 z-10">
+                        <img id="mimi-avatar" src="" alt="Mimi" class="w-full h-full object-cover hidden" />
+                        
+                        <!-- デフォルメイラストSVG -->
+                        <div id="mimi-svg-fallback" class="w-full h-full p-1 bg-gradient-to-b from-pink-50 to-rose-50 flex items-center justify-center">
+                            <svg class="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="100" cy="100" r="90" fill="#fff3f8" />
+                                <path d="M65 125 L135 125 L150 185 L50 185 Z" fill="#ff7ebb" />
+                                <circle cx="75" cy="145" r="2.5" fill="#ffd1e6" />
+                                <circle cx="100" cy="140" r="2.5" fill="#ffd1e6" />
+                                <circle cx="125" cy="145" r="2.5" fill="#ffd1e6" />
+                                <circle cx="85" cy="165" r="2.5" fill="#ffd1e6" />
+                                <circle cx="115" cy="165" r="2.5" fill="#ffd1e6" />
+                                <circle cx="100" cy="170" r="2.5" fill="#ffd1e6" />
+                                <path d="M50 185 Q57 190 65 185 Q72 190 80 185 Q87 190 95 185 Q102 190 110 185 Q117 190 125 185 Q132 190 140 185 Q147 190 150 185" fill="none" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+                                <path d="M50 185 Q57 190 65 185 Q72 190 80 185 Q87 190 95 185 Q102 190 110 185 Q117 190 125 185 Q132 190 140 185 Q147 190 150 185" fill="none" stroke="#f472b6" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M132 130 Q152 138 140 150" fill="none" stroke="#fdba74" stroke-width="9.5" stroke-linecap="round" />
+                                <path d="M132 130 Q152 138 140 150" fill="none" stroke="#fbcfe8" stroke-width="4" stroke-linecap="round" />
+                                <path d="M138 146 Q146 142 148 152" fill="none" stroke="#be123c" stroke-width="1.5" />
+                                <path d="M140 152 C140 148, 154 148, 154 152 C154 161, 147 167, 147 167 C147 167, 140 161, 140 152 Z" fill="#e11d48" />
+                                <path d="M143 150 L147 146 L151 150 L147 152 Z" fill="#16a34a" />
+                                <circle cx="144" cy="155" r="0.5" fill="#fef08a" />
+                                <circle cx="150" cy="155" r="0.5" fill="#fef08a" />
+                                <circle cx="147" cy="159" r="0.5" fill="#fef08a" />
+                                <circle cx="144" cy="162" r="0.5" fill="#fef08a" />
+                                <path d="M68 130 Q48 138 60 148" fill="none" stroke="#fdba74" stroke-width="9.5" stroke-linecap="round" />
+                                <path d="M68 130 Q48 138 60 148" fill="none" stroke="#fbcfe8" stroke-width="4" stroke-linecap="round" />
+                                <circle cx="100" cy="124" r="4.5" fill="#db2777" />
+                                <path d="M100 124 Q90 116 91 128 Z" fill="#db2777" />
+                                <path d="M100 124 Q110 116 109 128 Z" fill="#db2777" />
+                                <ellipse cx="100" cy="82" rx="52" ry="43" fill="#fdba74" />
+                                <path d="M100 58 C76 58, 66 104, 100 121 C134 104, 124 58, 100 58 Z" fill="#f9fafb" />
+                                <path d="M100 44 L100 54" fill="none" stroke="#d97706" stroke-width="3" stroke-linecap="round" />
+                                <path d="M92 46 L94 53" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                                <path d="M108 46 L106 53" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                                <path d="M58 76 Q68 74 76 77" fill="none" stroke="#d97706" stroke-width="3.5" stroke-linecap="round" />
+                                <circle cx="60" cy="85" r="2.5" fill="#d97706" />
+                                <path d="M60 85 Q68 84 75 87" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                                <path d="M142 76 Q132 74 124 77" fill="none" stroke="#d97706" stroke-width="3.5" stroke-linecap="round" />
+                                <path d="M140 85 Q132 84 125 87" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
+                                <path d="M56 49 Q41 43 43 61 Q58 61 58 52 Z" fill="#e28743" stroke="#d97706" stroke-width="1" />
+                                <path d="M51 51 Q45 47 46 57 Z" fill="#fecdd3" />
+                                <path d="M144 49 Q159 43 157 61 Q142 61 142 52 Z" fill="#e28743" stroke="#d97706" stroke-width="1" />
+                                <path d="M149 51 Q155 47 154 57 Z" fill="#fecdd3" />
+                                <circle cx="56" cy="47" r="2.5" fill="#eab308" />
+                                <circle cx="52" cy="47" r="2" fill="white" />
+                                <circle cx="60" cy="47" r="2" fill="white" />
+                                <circle cx="56" cy="43" r="2" fill="white" />
+                                <circle cx="56" cy="51" r="2" fill="white" />
+                                <circle cx="144" cy="47" r="2.5" fill="#eab308" />
+                                <circle cx="140" cy="47" r="2" fill="white" />
+                                <circle cx="148" cy="47" r="2" fill="white" />
+                                <circle cx="144" cy="43" r="2" fill="white" />
+                                <circle cx="144" cy="51" r="2" fill="white" />
+                                <ellipse cx="78" cy="85" rx="10" ry="10" fill="#047857" />
+                                <ellipse cx="78" cy="85" rx="7" ry="7" fill="#10b981" />
+                                <ellipse cx="78" cy="85" rx="4" ry="7" fill="#111827" />
+                                <circle cx="75" cy="81" r="3" fill="white" />
+                                <circle cx="81" cy="89" r="1.2" fill="white" />
+                                <path d="M66 82 Q78 72 90 82" fill="none" stroke="#111827" stroke-width="2.5" stroke-linecap="round" />
+                                <path d="M64 78 L68 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                                <path d="M92 78 L88 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                                <ellipse cx="122" cy="85" rx="10" ry="10" fill="#047857" />
+                                <ellipse cx="122" cy="85" rx="7" ry="7" fill="#10b981" />
+                                <ellipse cx="122" cy="85" rx="4" ry="7" fill="#111827" />
+                                <circle cx="119" cy="81" r="3" fill="white" />
+                                <circle cx="125" cy="89" r="1.2" fill="white" />
+                                <path d="M110 82 Q122 72 134 82" fill="none" stroke="#111827" stroke-width="2.5" stroke-linecap="round" />
+                                <path d="M108 78 L112 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                                <path d="M136 78 L132 80" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                                <polygon points="97,94 103,94 100,97" fill="#f472b6" />
+                                <path d="M94 99 Q100 103 100 100" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                                <path d="M100 100 Q100 103 106 99" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" />
+                                <path d="M97 101 Q100 108 103 101" fill="#f43f5e" />
+                                <circle cx="66" cy="94" r="5" fill="#fca5a5" opacity="0.6" />
+                                <circle cx="134" cy="94" r="5" fill="#fca5a5" opacity="0.6" />
+                                <path d="M55 94 L38 93" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                                <path d="M55 98 L40 100" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                                <path d="M145 94 L162 93" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                                <path d="M145 98 L160 100" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" />
+                            </svg>
+                        </div>
+
+                        <!-- 感情表現バッジ -->
+                        <div id="emotion-badge" class="absolute -top-1 -right-1 bg-white border-2 border-pink-300 w-9 h-9 rounded-full flex items-center justify-center shadow-md animate__animated animate__bounceIn z-20">
+                            <span id="emotion-emoji" class="text-lg">😊</span>
+                        </div>
+                    </div>
+
+                    <div id="effect-layer" class="absolute inset-0 pointer-events-none z-30"></div>
+                </div>
+
+                <!-- メッセージウィンドウ -->
+                <div class="bg-rose-50/70 border-2 border-pink-100 rounded-2xl p-3 shadow-inner relative flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-1 border-b border-pink-200/50 pb-1">
+                        <span class="font-bold text-xs text-rose-500 flex items-center space-x-1">
+                            <i class="fa-solid fa-comment-dots"></i>
+                            <span>ミミちゃん</span>
+                        </span>
+                        <!-- 音声再生ボタン -->
+                        <button id="voice-btn" class="flex items-center space-x-1 bg-white border border-pink-200 hover:bg-pink-100 text-pink-500 text-[10px] px-2.5 py-1 rounded-full transition active:scale-95">
+                            <i id="voice-icon" class="fa-solid fa-volume-high"></i>
+                            <span id="voice-text">こえをきく</span>
+                        </button>
+                    </div>
+
+                    <div class="min-h-[50px] flex items-center">
+                        <p id="dialogue-text" class="text-gray-700 text-xs md:text-sm leading-relaxed font-semibold w-full"></p>
+                    </div>
+
+                    <div id="voice-loading" class="hidden absolute inset-0 bg-white/80 rounded-2xl flex items-center justify-center space-x-2">
+                        <div class="w-1.5 h-1.5 bg-pink-400 rounded-full animate-bounce"></div>
+                        <div class="w-1.5 h-1.5 bg-pink-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                        <div class="w-1.5 h-1.5 bg-pink-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                        <span class="text-[11px] text-pink-500 font-bold">おしゃべり準備中...</span>
+                    </div>
+                </div>
+
+                <!-- ステージ情報 -->
+                <div class="flex justify-between text-[10px] text-gray-400 px-1">
+                    <span id="stage-counter">親密度ステージ: 1 / 6</span>
+                    <span id="stage-status">ご機嫌アップをねらおう！</span>
+                </div>
+
+                <!-- 操作エリア (通常選択肢 or AIチャット入力) -->
+                <div id="input-container" class="min-h-[80px]">
+                    <!-- 通常モード用の選択肢ボックス -->
+                    <div id="options-box" class="space-y-1.5 pb-2"></div>
+
+                    <!-- AI対話モード用の入力エリア (非表示) -->
+                    <div id="ai-chat-box" class="hidden pb-2">
+                        <form id="ai-chat-form" class="flex items-center space-x-2">
+                            <input type="text" id="ai-chat-input" placeholder="ミミちゃんにやさしく話しかけてね..." class="flex-grow bg-slate-50 border-2 border-pink-100 focus:border-pink-300 rounded-xl px-3 py-2 text-xs md:text-sm outline-none transition" />
+                            <button type="submit" class="bg-indigo-400 hover:bg-indigo-500 text-white rounded-xl px-3.5 py-2 text-xs font-bold shadow transition flex items-center justify-center space-x-1">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>送信</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ステージ 3: 結果発表画面 -->
+            <div id="result-screen" class="hidden flex-grow flex flex-col justify-center items-center text-center space-y-5 py-6 animate__animated animate__zoomIn">
+                <div id="result-badge-container" class="relative">
+                    <div class="w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-lg relative z-10">
+                        <span id="result-emoji">👑</span>
+                    </div>
+                    <div class="absolute -inset-2 bg-gradient-to-r from-yellow-300 to-pink-300 rounded-full blur opacity-75 animate-pulse"></div>
+                </div>
+
+                <div class="space-y-1">
+                    <h2 id="result-title" class="text-xl md:text-2xl font-bold fancy-title text-pink-500">ご機嫌MAX！</h2>
+                    <p id="result-desc" class="text-xs text-gray-600 px-4 leading-relaxed"></p>
+                </div>
+
+                <div class="bg-pink-50 p-3 rounded-xl w-full max-w-xs border border-pink-100 text-left space-y-1 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">最終ご機嫌度:</span>
+                        <span id="final-score" class="font-bold text-rose-500">100%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">ミミちゃんの印象:</span>
+                        <span id="final-impression" class="font-bold text-pink-600">最高のお友達</span>
+                    </div>
+                </div>
+
+                <button id="retry-btn" class="bg-gradient-to-r from-pink-400 to-rose-400 hover:from-pink-500 hover:to-rose-500 text-white font-bold py-2.5 px-8 rounded-full shadow-lg transition text-sm fancy-title">
+                    もう一度あそぶ！
+                </button>
+            </div>
+
+        </div>
+
+        <!-- フッター -->
+        <div class="bg-pink-50 p-2 text-center text-[10px] text-pink-400 border-t border-pink-100">
+            <span>ミミちゃんの声をきくにはスピーカーをオンにしてください 🎀</span>
+        </div>
+    </div>
+
+    <!-- APIキー設定モーダル -->
+    <div id="api-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50 animate__animated animate__fadeIn">
+        <div class="bg-white rounded-2xl w-full max-w-xs p-5 space-y-4 shadow-2xl relative border-2 border-pink-100">
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-sm text-pink-600 flex items-center space-x-1">
+                    <i class="fa-solid fa-key"></i>
+                    <span>Gemini API設定</span>
+                </span>
+                <button id="close-api-modal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-gray-500 leading-relaxed">
+                Gemini APIキーを入力すると、完全な自由対話ができる「AIおしゃべりモード」が解放されます！キーはブラウザに安全に保存されます。
+            </p>
+            <div class="space-y-1">
+                <input type="password" id="api-key-input" placeholder="AIZA...で始まるキー" class="w-full bg-slate-50 border border-pink-100 focus:border-pink-300 rounded-xl px-3 py-2 text-xs outline-none transition" />
+            </div>
+            <div class="flex space-x-2 pt-1">
+                <button id="save-api-btn" class="flex-grow bg-pink-400 hover:bg-pink-500 text-white font-bold py-2 rounded-xl text-xs shadow transition">
+                    保存する
+                </button>
+                <button id="clear-api-btn" class="bg-slate-100 hover:bg-slate-200 text-gray-500 font-bold py-2 px-3 rounded-xl text-xs transition">
+                    消去
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BGM再生用オーディオ -->
+    <audio id="bgm-audio" src="Pawprint Parade-2.mp3" loop></audio>
+    <!-- 音声再生用オーディオ -->
+    <audio id="tts-audio" class="hidden"></audio>
+
+    <script>
+        // ゲームステート
+        let mimiImageSrc = "";
+        let currentStage = 0;
+        let happiness = 50; 
+        let currentAudioUrl = null;
+        let isAiMode = false;
+        let aiRoundCount = 0;
+        const maxAiRounds = 5; // AIモードでの会話往復数
+
+        // BGMオーディオ要素と設定
+        const bgmAudio = document.getElementById('bgm-audio');
+        const toggleBgmBtn = document.getElementById('toggle-bgm');
+        const bgmIcon = document.getElementById('bgm-icon');
+        let isBgmPlaying = false;
+
+        // BGMの音量を適切な大きさに設定 (聞き取りやすい 0.35 に調整)
+        bgmAudio.volume = 0.35;
+
+        // BGMを再生するコアロジック (成功時にイベント解除するよう最適化)
+        function playBGM() {
+            bgmAudio.volume = 0.35;
+            const playPromise = bgmAudio.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    isBgmPlaying = true;
+                    bgmIcon.className = "fa-solid fa-music text-xs md:text-sm animate-pulse text-pink-100";
+                    // 再生成功した時点で、画面タップ監視イベントを安全に全解除する
+                    document.body.removeEventListener('click', startBgmOnInteraction);
+                    document.body.removeEventListener('touchstart', startBgmOnInteraction);
+                }).catch((error) => {
+                    console.log("BGM Playback prevented:", error);
+                    isBgmPlaying = false;
+                    bgmIcon.className = "fa-solid fa-volume-xmark text-xs md:text-sm";
+                });
+            }
+        }
+
+        // BGMを一時停止するコアロジック
+        function pauseBGM() {
+            bgmAudio.pause();
+            isBgmPlaying = false;
+            bgmIcon.className = "fa-solid fa-volume-xmark text-xs md:text-sm text-white/70";
+        }
+
+        // 最初のユーザー操作でBGMの再生を起動する（ブラウザ自動再生対策）
+        function startBgmOnInteraction() {
+            if (!isBgmPlaying) {
+                playBGM();
+            }
+        }
+
+        // 【修正】一発限定(once)を撤廃！ブラウザが音声を許可するクリックが起きるまで、何度でもトライし続けます
+        document.body.addEventListener('click', startBgmOnInteraction);
+        document.body.addEventListener('touchstart', startBgmOnInteraction);
+
+        // BGMのON/OFF切り替えボタンの動作
+        toggleBgmBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // バブリング防止
+            if (isBgmPlaying) {
+                pauseBGM();
+            } else {
+                playBGM();
+            }
+        });
+
+        // APIキーの取得＆保存
+        let userApiKey = localStorage.getItem("gemini_mimi_apikey") || "";
+        const audioPlayer = document.getElementById('tts-audio');
+
+        // 音声周りの設定保持
+        let activeText = "";
+        let activePrompt = "";
+
+        // 要素取得
+        const dropZone = document.getElementById('drop-zone');
+        const imageLoader = document.getElementById('image-loader');
+        const startBtn = document.getElementById('start-btn');
+        const startAiBtn = document.getElementById('start-ai-btn');
+        const setupScreen = document.getElementById('setup-screen');
+        const playScreen = document.getElementById('play-screen');
+        const resultScreen = document.getElementById('result-screen');
+        
+        const mimiAvatar = document.getElementById('mimi-avatar');
+        const mimiSvgFallback = document.getElementById('mimi-svg-fallback');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const emotionEmoji = document.getElementById('emotion-emoji');
+        const effectLayer = document.getElementById('effect-layer');
+        const moodBg = document.getElementById('mood-bg');
+
+        const dialogueText = document.getElementById('dialogue-text');
+        const meterText = document.getElementById('meter-text');
+        const optionsBox = document.getElementById('options-box');
+        const aiChatBox = document.getElementById('ai-chat-box');
+        const aiChatForm = document.getElementById('ai-chat-form');
+        const aiChatInput = document.getElementById('ai-chat-input');
+        const stageCounter = document.getElementById('stage-counter');
+        const stageStatus = document.getElementById('stage-status');
+
+        const voiceBtn = document.getElementById('voice-btn');
+        const voiceIcon = document.getElementById('voice-icon');
+        const voiceText = document.getElementById('voice-text');
+        const voiceLoading = document.getElementById('voice-loading');
+
+        const resultEmoji = document.getElementById('result-emoji');
+        const resultTitle = document.getElementById('result-title');
+        const resultDesc = document.getElementById('result-desc');
+        const finalScore = document.getElementById('final-score');
+        const finalImpression = document.getElementById('final-impression');
+        const retryBtn = document.getElementById('retry-btn');
+
+        // API設定モーダルの制御
+        const apiModal = document.getElementById('api-modal');
+        const openApiModalBtn = document.getElementById('open-api-modal');
+        const closeApiModalBtn = document.getElementById('close-api-modal');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const saveApiBtn = document.getElementById('save-api-btn');
+        const clearApiBtn = document.getElementById('clear-api-btn');
+        const aiModeBadge = document.getElementById('ai-mode-badge');
+
+        function updateAiBadge() {
+            if (userApiKey) {
+                aiModeBadge.textContent = "✨ APIキー適用済み！いつでもおしゃべりできます";
+                aiModeBadge.className = "text-[10px] text-emerald-500 font-bold text-center";
+                apiKeyInput.value = userApiKey;
+            } else {
+                aiModeBadge.textContent = "※自由おしゃべりにはAPIキーが必要です";
+                aiModeBadge.className = "text-[10px] text-indigo-400 font-bold text-center";
+                apiKeyInput.value = "";
+            }
+        }
+        updateAiBadge();
+
+        openApiModalBtn.addEventListener('click', () => {
+            apiModal.classList.remove('hidden');
+        });
+        closeApiModalBtn.addEventListener('click', () => {
+            apiModal.classList.add('hidden');
+        });
+        saveApiBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                userApiKey = key;
+                localStorage.setItem("gemini_mimi_apikey", key);
+                updateAiBadge();
+                showFloatingAlert("APIキーを保存しました！");
+                apiModal.classList.add('hidden');
+                // キー保存後も、BGMを確実に再生トリガーさせる
+                playBGM();
+            } else {
+                showFloatingAlert("キーを入力してください。");
+            }
+        });
+        clearApiBtn.addEventListener('click', () => {
+            userApiKey = "";
+            localStorage.removeItem("gemini_mimi_apikey");
+            updateAiBadge();
+            showFloatingAlert("APIキーを消去しました。");
+            apiModal.classList.add('hidden');
+        });
+
+        // リアル猫アップローダーのトグル
+        const toggleUploadBtn = document.getElementById('toggle-upload-btn');
+        const uploadSection = document.getElementById('upload-section');
+        toggleUploadBtn.addEventListener('click', () => {
+            uploadSection.classList.toggle('hidden');
+        });
+
+        // ドラッグ＆ドロップ
+        dropZone.addEventListener('click', () => imageLoader.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('bg-pink-100'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('bg-pink-100'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-pink-100');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) loadImage(file);
+        });
+        imageLoader.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) loadImage(file);
+        });
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                mimiImageSrc = event.target.result;
+                mimiAvatar.src = mimiImageSrc;
+                mimiAvatar.classList.remove('hidden');
+                mimiSvgFallback.classList.add('hidden');
+                fileNameDisplay.textContent = `適用: ${file.name}`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // --- シナリオデータベース（クイズ用） ---
+        const scenarios = [
+            {
+                id: 0,
+                speaker: "ミミちゃん",
+                text: "ちわぁ！ミミだよぉ。おそと, ぽかぽかしてきもちいいねぇ！ミミといーっぱいあそんでくれるぅ？",
+                ttsPrompt: "5歳のとても幼い猫耳の女の子が、お外が晴れて大喜びしている様子で、舌足らずに甘える声で",
+                options: [
+                    {
+                        text: "「うん！今日の1番の楽しみだよ、たくさん遊ぼうね！」",
+                        effect: 20,
+                        reply: "えへへ！ほんとぉ！？嬉しいにゃぁ、今日はいっぱいだっこしてね！",
+                        replyTts: "5歳の幼い女の子が、跳びはねて大喜びし、デレデレと甘えつく声で",
+                        emotion: "joy"
+                    },
+                    {
+                        text: "「少しだけなら遊んであげるよ！」",
+                        effect: 5,
+                        reply: "ちょっとだけぇ…？でも、あそんでくれるだけでミミ、うれしいにゃ。",
+                        replyTts: "5歳の幼い女の子が、少し不満げにしつつ、健気に喜ぼうとしている可愛らしい声で",
+                        emotion: "normal"
+                    },
+                    {
+                        text: "「今は忙しいから、あっちに行ってて」",
+                        effect: -25,
+                        reply: "うぅ…いそがしいのぉ？ミミ, お邪魔むしだったにゃぁ…しくしく…。",
+                        replyTts: "5歳の幼い女の子が、今にも泣き出しそうに涙ぐんで、拗ねている悲しい声で",
+                        emotion: "sad"
+                    }
+                ]
+            },
+            {
+                id: 1,
+                speaker: "ミミちゃん",
+                text: "みてみて！きょうのお洋服、ピンクでふわふわなのぉ！ミミに似合ってるぅ…？かわいいって言ってぇ？",
+                ttsPrompt: "5歳のとても幼い女の子が、お気に入りのフリルドレスを着て誇らしげに、照れながら甘える声で",
+                options: [
+                    {
+                        text: "「お姫様みたいに世界一可愛いよ！」",
+                        effect: 25,
+                        reply: "お, おひめしゃま…！てれちゃうにゃぁ…うにゅにゅ、うれしいにゃぁ！",
+                        replyTts: "5歳の幼い女の子が、恥ずかしがって顔をうずめながらも、最高に嬉しそうにくねくねしている甘い声で",
+                        emotion: "blush"
+                    },
+                    {
+                        text: "「うん、とっても可愛い洋服だね！」",
+                        effect: 10,
+                        reply: "えへへ、ありがとにゃ！ミミ, このお洋服着てるときが一番かっこいいんだぁ！",
+                        replyTts: "5歳の幼い女の子が、誇らしげに胸をはって元気に自慢する声で",
+                        emotion: "star"
+                    },
+                    {
+                        text: "「ちょっと派手すぎて似合ってないかも…」",
+                        effect: -30,
+                        reply: "うそ…へんだったにゃ…？ミミ, がんばっておめかししたのにぃ！うわーん！",
+                        replyTts: "5歳の幼い女の子が、ショックのあまり大泣きして、怒ってだだをこねている声で",
+                        emotion: "crying"
+                    }
+                ]
+            },
+            {
+                id: 2,
+                speaker: "ミミちゃん",
+                text: "このいちごのバッグねぇ、中にヒミツのたからものが入ってるのぉ。なーんだ？あててみてぇ！",
+                ttsPrompt: "5歳の幼い女の子が、自分だけの特別なバッグを抱え込み、いたずらっぽくクイズを出す可愛い声で",
+                options: [
+                    {
+                        text: "「あまくて美味しい本物のいちごかな？」",
+                        effect: 25,
+                        reply: "あたりーー！すごいにゃ！あまくて美味しいから、あとで半分こしてあげるにゃ！",
+                        replyTts: "5歳の幼い女の子が、当てられて驚きつつ、大好物を一緒に分ける約束を嬉しそうに提案する声で",
+                        emotion: "joy"
+                    },
+                    {
+                        text: "「猫ちゃん用のおやつかな？」",
+                        effect: 15,
+                        reply: "おやつもいいけど、はずれぇ！でも、おなかすいた時用におやつも詰めとくにゃ！",
+                        replyTts: "5歳の幼い女の子が、クスクスと楽しそうに笑いながら、おどけた可愛いトーンで話してください",
+                        emotion: "normal"
+                    },
+                    {
+                        text: "「どうせ中身は空っぽで、ただの飾り物でしょ？」",
+                        effect: -35,
+                        reply: "からっぽじゃないもん！ミミのたからもの馬鹿にしたなぁ！めっ！だよ！",
+                        replyTts: "5歳の幼い女の子が、お口を尖らせて全力で反論し、プンプン怒っている声で",
+                        emotion: "angry"
+                    }
+                ]
+            },
+            {
+                id: 3,
+                speaker: "ミミちゃん",
+                text: "お耳のよこのおはな、お花畑で見つけたんだよぉ。かわいいお花でしょ？ミミが自分でつけたのにゃ！",
+                ttsPrompt: "5歳の幼い女の子が、お花の飾りを自分で付けられてご満悦で、アピールしてくる声で",
+                options: [
+                    {
+                        text: "「瞳の色とお花がすごくマッチしてて, お花の妖精さんみたい！」",
+                        effect: 25,
+                        reply: "ようせいしゃま…！ミミ, お空とべるかなぁ？うれしすぎて飛べちゃいそうにゃぁ！",
+                        replyTts: "5歳の幼い女の子が、ファンタジーな例え話に目を輝かせ、夢見心地で大喜びする声で",
+                        emotion: "joy"
+                    },
+                    {
+                        text: "「自分でつけられたの？えらいねぇ！」",
+                        effect: 10,
+                        reply: "うん！鏡をみて、がんばって「よいしょ、よいしょ」ってしたにゃ！褒められたにゃ！",
+                        replyTts: "5歳の幼い女の子が、一生懸命がんばった手順を思い出して自慢気に、元気よくおしゃべりする声で",
+                        emotion: "star"
+                    },
+                    {
+                        text: "「ゴミがついてるのかと思ったよ」",
+                        effect: -45,
+                        reply: "ご, ごみじゃないにゃぁぁ！ミミ, ゴミじゃないもん！いじわるぅ！大っきらいにゃ！",
+                        replyTts: "5歳の幼い女の子が、完全にへそを曲げ、大粒の涙をこぼしながら怒鳴っている悲痛な声で",
+                        emotion: "furious"
+                    }
+                ]
+            },
+            {
+                id: 4,
+                speaker: "ミミちゃん",
+                text: "お話ししてたら、お腹が「ぎゅるるー」って鳴っちゃったぁ…。ねぇ、なにか美味しいもの、もってないのぉ？",
+                ttsPrompt: "5歳の幼い女の子が、お腹が減って少しおねだりするように、服の裾を引っ張ってくるような甘え声で",
+                options: [
+                    {
+                        text: "「極上のマグロちゅ〜るをどうぞ！」",
+                        effect: 30,
+                        reply: "ちゅーるぅ！これだいすきにゃぁ！ハグしたいくらい好き！いただきまーすにゃ！",
+                        replyTts: "5歳の幼い女の子が、大好物を目の前にして興奮のあたり逆上し、むしゃむしゃ食べる幸せそうな声で",
+                        emotion: "joy"
+                    },
+                    {
+                        text: "「美味しいものの代わりに、お耳をなでなでしてあげる！」",
+                        effect: 15,
+                        reply: "ふにゃあぁ…そこ、すっごくゴロゴロしちゃうぅ…お腹へったの、忘れちゃうにゃぁ…。",
+                        replyTts: "5歳の幼い女の子が、気持ちよさのあまりとろけそうになり、のどをゴロゴロ鳴らす超甘え声で",
+                        emotion: "blush"
+                    },
+                    {
+                        text: "「太っちゃうから我慢しようね」",
+                        effect: -30,
+                        reply: "太ってないもん！ミミ, ちっちゃいのにゃ！ご飯くれないの、ぜぜったい恨むにゃぁ…。ぶーぶー！",
+                        replyTts: "5歳の幼い女の子が、不機嫌の極みに達してふくれっ面をし、拗ねている恨めしい声で",
+                        emotion: "angry"
+                    }
+                ]
+            },
+            {
+                id: 5,
+                speaker: "ミミちゃん",
+                text: "いっぱいいっしょにいてくれてありがとにゃ。ミミ, すっごくしあわせ。あしたも、ここでお花つみしよ…？約束にゃ？",
+                ttsPrompt: "5歳の幼い女の子が、今日が終わる寂しさを抱えつつ、明日の約束を熱烈に待ち望む寂しげな声で",
+                options: [
+                    {
+                        text: "「約束だよ！明日も明後日もずっとミミちゃんと一緒に遊ぼうね！」",
+                        effect: 30,
+                        reply: "ゆびきりげんまん！にゃ！ミミ, あしたも世界一おめかしして、ここで待ってるにゃぁ！だいすき！",
+                        replyTts: "5歳の幼い女の子が、最高の約束を果たせて大興奮し、愛おしさをいっぱいに込めて叫ぶ可愛い声で",
+                        emotion: "joy"
+                    },
+                    {
+                        text: "「時間ができたらまた来るね」",
+                        effect: 10,
+                        reply: "うん…お仕事がんばってね。ミミ, ここでお花数えながら待ってるから, 早くきてにゃ？",
+                        replyTts: "5歳の幼い女の子が、少し寂しさをこらえ、健気にお仕事を見送る健気でいじらしい声で",
+                        emotion: "normal"
+                    },
+                    {
+                        text: "「明日はちょっと来られないかも」",
+                        effect: -40,
+                        reply: "うぅ…こないのぉ？ミミ, あしたから一人ぼっちにゃぁ…もうお家に帰るにゃ…バイバイ…。",
+                        replyTts: "5歳の幼い女の子が、どん底に落とされたように暗い表情になり、完全にトーンダウンしてしくしく泣く声で",
+                        emotion: "sad"
+                    }
+                ]
+            }
+        ];
+
+        // 感情設定の表情・オーラ対応
+        const emotions = {
+            normal: { emoji: "😊", bg: "rgba(244, 63, 94, 0.1)", icon: "🌸" },
+            joy: { emoji: "🥰", bg: "rgba(244, 63, 94, 0.25)", icon: "💖" },
+            blush: { emoji: "😳", bg: "rgba(236, 72, 153, 0.25)", icon: "💝" },
+            angry: { emoji: "😡", bg: "rgba(99, 102, 241, 0.25)", icon: "⚡" },
+            furious: { emoji: "💢", bg: "rgba(79, 70, 229, 0.4)", icon: "🔥" },
+            sad: { emoji: "😢", bg: "rgba(100, 116, 139, 0.25)", icon: "💧" },
+            crying: { emoji: "😭", bg: "rgba(71, 85, 105, 0.35)", icon: "🌧️" },
+            star: { emoji: "✨", bg: "rgba(250, 204, 21, 0.25)", icon: "⭐" }
+        };
+
+        function setEmotion(type) {
+            const current = emotions[type] || emotions.normal;
+            emotionEmoji.textContent = current.emoji;
+            moodBg.style.backgroundColor = current.bg;
+            spawnFloatingParticle(current.icon);
+        }
+
+        function spawnFloatingParticle(symbol) {
+            const particle = document.createElement('span');
+            particle.className = "absolute text-2xl select-none animate__animated animate__fadeOutUp";
+            particle.style.left = `${Math.random() * 80 + 10}%`;
+            particle.style.bottom = "20%";
+            particle.innerText = symbol;
+            effectLayer.appendChild(particle);
+            setTimeout(() => { particle.remove(); }, 1000);
+        }
+
+        // 開始トリガー
+        startBtn.addEventListener('click', () => startNormalGame());
+        startAiBtn.addEventListener('click', () => startAiGame());
+
+        function startNormalGame() {
+            isAiMode = false;
+            initGame();
+        }
+
+        function startAiGame() {
+            if (!userApiKey) {
+                showFloatingAlert("AIおしゃべりモードにはGemini APIキーが必要です！右上の設定ギアから登録してね。");
+                apiModal.classList.remove('hidden');
+                return;
+            }
+            isAiMode = true;
+            aiRoundCount = 0;
+            initGame();
+        }
+
+        function initGame() {
+            playBGM();
+
+            setupScreen.classList.add('hidden');
+            playScreen.classList.remove('hidden');
+            currentStage = 0;
+            happiness = 50;
+            updateHappinessMeter();
+
+            if (!isAiMode) {
+                // クイズモード
+                optionsBox.classList.remove('hidden');
+                aiChatBox.classList.add('hidden');
+                loadScenario(0);
+            } else {
+                // AI自由チャットモード
+                optionsBox.classList.add('hidden');
+                aiChatBox.classList.remove('hidden');
+                stageCounter.textContent = `会話ラウンド: 1 / ${maxAiRounds}`;
+                stageStatus.textContent = "メッセージを入力してね！";
+                
+                // 初期のAIの挨拶
+                const initialGreeting = "わーい！ここでおしゃべりできるにゃ！ミミの5歳のお誕生日なの！いーっぱいお話しよ？何してあそぶぅ？";
+                const initialPrompt = "5歳のとても幼い猫耳 of 女の子がおしゃべりできることに目を輝かせ、舌足らずに甘える声で";
+                
+                setEmotion("joy");
+                typeWriter(initialGreeting);
+                setupVoiceButton(initialGreeting, initialPrompt);
+                autoPlayVoice(initialGreeting, initialPrompt);
+            }
+        }
+
+        // クイズモードの読み込み
+        function loadScenario(stageIndex) {
+            if (stageIndex >= scenarios.length) {
+                endGame(true);
+                return;
+            }
+            const scenario = scenarios[stageIndex];
+            stageCounter.textContent = `親密度ステージ: ${stageIndex + 1} / ${scenarios.length}`;
+            stageStatus.textContent = "ミミちゃんのお話を聞いてね";
+            
+            // ステージに応じた初期感情
+            const stageEmotions = ["normal", "normal", "star", "normal", "star", "normal"];
+            setEmotion(stageEmotions[stageIndex] || "normal");
+
+            typeWriter(scenario.text, () => {
+                renderOptions(scenario.options);
+            });
+            setupVoiceButton(scenario.text, scenario.ttsPrompt);
+        }
+
+        // 文字のタイピング演出
+        let typeTimeout;
+        function typeWriter(text, callback) {
+            dialogueText.innerHTML = "";
+            let i = 0;
+            clearInterval(typeTimeout);
+            typeTimeout = setInterval(() => {
+                if (i < text.length) {
+                    dialogueText.innerHTML += text.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typeTimeout);
+                    if (callback) callback();
+                }
+            }, 25);
+        }
+
+        // クイズ選択肢のレンダリング
+        function renderOptions(options) {
+            optionsBox.innerHTML = "";
+            options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-white hover:bg-pink-50 border-2 border-pink-100 hover:border-pink-300 rounded-xl p-2.5 text-xs md:text-sm font-semibold transition shadow-sm hover:shadow-md transform hover:-translate-y-0.5 active:translate-y-0 flex items-center space-x-2 animate__animated animate__fadeInUp";
+                btn.style.animationDelay = `${idx * 0.1}s`;
+                btn.innerHTML = `<span class="text-pink-400">♥</span> <span class="flex-grow">${opt.text}</span>`;
+                btn.addEventListener('click', () => selectOption(opt));
+                optionsBox.appendChild(btn);
+            });
+        }
+
+        // クイズの選択処理
+        function selectOption(option) {
+            optionsBox.innerHTML = "";
+            happiness += option.effect;
+            if (happiness > 100) happiness = 100;
+            if (happiness < 0) happiness = 0;
+            updateHappinessMeter();
+
+            setEmotion(option.emotion || "normal");
+
+            // 特殊エフェクト粒子
+            if (option.effect >= 20) {
+                for(let i=0; i<5; i++) setTimeout(() => spawnFloatingParticle("💖"), i * 150);
+            } else if (option.effect < 0) {
+                for(let i=0; i<5; i++) setTimeout(() => spawnFloatingParticle("💧"), i * 150);
+            }
+
+            stageStatus.textContent = `ご機嫌変化: ${option.effect > 0 ? '+' : ''}${option.effect}%`;
+
+            typeWriter(option.reply, () => {
+                const nextBtn = document.createElement('button');
+                nextBtn.className = "w-full bg-pink-400 hover:bg-pink-500 text-white font-bold py-2.5 rounded-xl shadow transition text-xs md:text-sm fancy-title flex items-center justify-center space-x-1 animate__animated animate__pulse animate__infinite";
+                nextBtn.innerHTML = `<span>次のおはなしへ</span> <i class="fa-solid fa-circle-chevron-right"></i>`;
+                nextBtn.addEventListener('click', () => {
+                    if (happiness <= 0) {
+                        endGame(false);
+                    } else {
+                        currentStage++;
+                        loadScenario(currentStage);
+                    }
+                });
+                optionsBox.appendChild(nextBtn);
+            });
+
+            setupVoiceButton(option.reply, option.replyTts);
+            autoPlayVoice(option.reply, option.replyTts);
+        }
+
+        // --- AIおしゃべりモード処理 ---
+        aiChatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = aiChatInput.value.trim();
+            if (!message) return;
+
+            aiChatInput.value = "";
+            aiChatInput.disabled = true;
+            dialogueText.innerHTML = "かんがえ中...";
+            voiceLoading.classList.remove('hidden');
+
+            try {
+                const result = await fetchAiResponse(message);
+                if (result) {
+                    aiRoundCount++;
+                    happiness += result.effect;
+                    if (happiness > 100) happiness = 100;
+                    if (happiness < 0) happiness = 0;
+                    updateHappinessMeter();
+
+                    setEmotion(result.emotion);
+
+                    // 粒子エフェクト
+                    if (result.effect > 10) {
+                        for(let i=0; i<5; i++) setTimeout(() => spawnFloatingParticle("💖"), i * 150);
+                    } else if (result.effect < 0) {
+                        for(let i=0; i<5; i++) setTimeout(() => spawnFloatingParticle("💧"), i * 150);
+                    }
+
+                    stageCounter.textContent = `会話ラウンド: ${aiRoundCount + 1} / ${maxAiRounds}`;
+                    stageStatus.textContent = `ご機嫌変化: ${result.effect > 0 ? '+' : ''}${result.effect}%`;
+
+                    // 幼女ボイスの設定
+                    const rawText = result.reply;
+                    const aiTtsPrompt = `5歳のとても幼い猫耳の女の子が、現在の感情が${result.emotion}の状態で、舌足らずに甘える声で`;
+
+                    typeWriter(rawText, () => {
+                        aiChatInput.disabled = false;
+                        aiChatInput.focus();
+
+                        // ラウンド数が最大値に達するかご機嫌度が0になったら終了
+                        if (aiRoundCount >= maxAiRounds || happiness <= 0) {
+                            aiChatBox.classList.add('hidden');
+                            setTimeout(() => {
+                                endGame(happiness > 0);
+                            }, 3500);
+                        }
+                    });
+
+                    setupVoiceButton(rawText, aiTtsPrompt);
+                    await autoPlayVoice(rawText, aiTtsPrompt);
+                } else {
+                    typeWriter("うにゅぅ…、お耳がいたくて聞こえなかったにゃ。もう一回言って？");
+                    aiChatInput.disabled = false;
+                }
+            } catch (err) {
+                typeWriter("うにゅぅ…、なんだかお星さまがぐるぐる回ってお話しできないにゃ。（エラーが発生しました）");
+                aiChatInput.disabled = false;
+            } finally {
+                voiceLoading.classList.add('hidden');
+            }
+        });
+
+        // Gemini-2.5-flash を利用してレスポンス＆感情＆ご機嫌増減をStructured JSONで取得
+        async function fetchAiResponse(userMessage) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userApiKey}`;
+            
+            const systemPrompt = "あなたは折れ耳のスコティッシュフォールドの5歳の極めて幼い女の子『ミミちゃん』です。白いお花の髪飾りを付け、ピンク의フリルドレスを着て、いちごのバッグを持っています。ユーザーに非常に甘えており、愛らしく舌足らずな「〜にゃ」「〜だよぉ」「うにゅ…」などの5歳児・子猫風 of 日本語口調で必ずお返事してください。ユーザーの言葉が嬉しければ大喜びし、叱られたり意地悪されると大泣きしたり拗ねたりします。";
+
+            const payload = {
+                contents: [{
+                    parts: [{ text: `ユーザー：「${userMessage}」` }]
+                }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            reply: { type: "STRING", description: "ミミちゃんとしての日本語での甘えた返答。ひらがな多めで非常に幼い口調にする。" },
+                            emotion: { type: "STRING", description: "感情タイプ。'normal'、'joy'、'blush'、'angry'、'furious'、'sad'、'crying'、'star'のいずれか" },
+                            effect: { type: "INTEGER", description: "ご機嫌度の増減値（整数）。とても嬉しい言葉には+10〜+35、通常の会話は+5〜+10、不快・意地悪・冷たい言葉には-10〜-40" }
+                        },
+                        required: ["reply", "emotion", "effect"]
+                    }
+                }
+            };
+
+            // 指数バックオフ
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) {
+                        const json = await response.json();
+                        const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (rawText) return JSON.parse(rawText);
+                    }
+                } catch (e) {
+                    // バックオフ
+                }
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+            return null;
+        }
+
+        // メーター表示
+        function updateHappinessMeter() {
+            meterText.textContent = `ご機嫌: ${happiness}%`;
+            if (happiness >= 80) {
+                meterText.parentElement.className = "flex items-center space-x-1 bg-rose-500 px-2 py-1 rounded-full border border-white/20 animate-pulse";
+            } else if (happiness <= 20) {
+                meterText.parentElement.className = "flex items-center space-x-1 bg-slate-500 px-2 py-1 rounded-full border border-white/20";
+            } else {
+                meterText.parentElement.className = "flex items-center space-x-1 bg-pink-500/30 px-2 py-1 rounded-full border border-white/20";
+            }
+        }
+
+        // 音声設定＆自動再生
+        function setupVoiceButton(text, prompt) {
+            activeText = text;
+            activePrompt = prompt;
+            if (currentAudioUrl) {
+                URL.revokeObjectURL(currentAudioUrl);
+                currentAudioUrl = null;
+            }
+            audioPlayer.src = "";
+            voiceIcon.className = "fa-solid fa-volume-high";
+            voiceText.textContent = "こえをきく";
+        }
+
+        async function autoPlayVoice(text, prompt) {
+            try {
+                // セリフの読み上げ時は一瞬だけBGMの音量をさらに下げる(ダッキング処理)
+                bgmAudio.volume = 0.04;
+                const audioBlob = await fetchVoice(text, prompt);
+                if (audioBlob) {
+                    currentAudioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayer.src = currentAudioUrl;
+                    
+                    const playPromise = audioPlayer.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            voiceIcon.className = "fa-solid fa-volume-high animate-ping";
+                            voiceText.textContent = "おしゃべり中";
+                        }).catch(err => {
+                            console.log("Auto-play voice failed:", err);
+                            if (isBgmPlaying) bgmAudio.volume = 0.35;
+                        });
+                    }
+                    
+                    audioPlayer.onended = () => {
+                        voiceIcon.className = "fa-solid fa-volume-high";
+                        voiceText.textContent = "もう一回きく";
+                        // 読み上げ終了後にBGMの音量を戻す
+                        if (isBgmPlaying) bgmAudio.volume = 0.35;
+                    };
+                } else {
+                    if (isBgmPlaying) bgmAudio.volume = 0.35;
+                }
+            } catch (err) {
+                console.log("autoPlayVoice error exception:", err);
+                if (isBgmPlaying) bgmAudio.volume = 0.35;
+            }
+        }
+
+        voiceBtn.addEventListener('click', async () => {
+            if (currentAudioUrl) {
+                if (isBgmPlaying) bgmAudio.volume = 0.04;
+                audioPlayer.play().then(() => {
+                    voiceIcon.className = "fa-solid fa-volume-high animate-ping";
+                    voiceText.textContent = "おしゃべり中";
+                }).catch(err => {
+                    console.log("Voice play retry failed:", err);
+                    if (isBgmPlaying) bgmAudio.volume = 0.35;
+                });
+                
+                audioPlayer.onended = () => {
+                    voiceIcon.className = "fa-solid fa-volume-high";
+                    voiceText.textContent = "もう一回きく";
+                    if (isBgmPlaying) bgmAudio.volume = 0.35;
+                };
+                return;
+            }
+
+            voiceLoading.classList.remove('hidden');
+            try {
+                if (isBgmPlaying) bgmAudio.volume = 0.04;
+                const audioBlob = await fetchVoice(activeText, activePrompt);
+                if (audioBlob) {
+                    currentAudioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayer.src = currentAudioUrl;
+                    audioPlayer.play().then(() => {
+                        voiceIcon.className = "fa-solid fa-volume-high animate-ping";
+                        voiceText.textContent = "おしゃべり中";
+                    }).catch(err => {
+                        console.log("Voice fetch play failed:", err);
+                        if (isBgmPlaying) bgmAudio.volume = 0.35;
+                    });
+                    
+                    audioPlayer.onended = () => {
+                        voiceIcon.className = "fa-solid fa-volume-high";
+                        voiceText.textContent = "もう一回きく";
+                        if (isBgmPlaying) bgmAudio.volume = 0.35;
+                    };
+                } else {
+                    if (isBgmPlaying) bgmAudio.volume = 0.35;
+                }
+            } catch (err) {
+                showFloatingAlert("スピーカーの準備に失敗しました（API制限等）");
+                if (isBgmPlaying) bgmAudio.volume = 0.35;
+            } finally {
+                voiceLoading.classList.add('hidden');
+            }
+        });
+
+        // TTS 音声合成 (Koreをベースにさらに幼さを引き出す)
+        async function fetchVoice(text, prompt) {
+            const apiKeyToUse = userApiKey || apiKey; 
+            if (!apiKeyToUse) return null; // APIキーが未設定の場合はTTSリクエストを安全に回避
+            
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKeyToUse}`;
+            
+            const payload = {
+                contents: [{
+                    parts: [{ text: `${prompt}：「${text}」` }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: "Kore" // 若々しく甘いハイクオリティボイス
+                            }
+                        }
+                    }
+                },
+                // 【修正】APIモデル名を正しく修復
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            let delay = 1000;
+            for (let i = 0; i < 3; i++) { // API制限と安定化のため試行を3回に最適化
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (response.ok) {
+                        const json = await response.json();
+                        const base64Audio = json.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                        const mimeType = json.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.mimeType || "audio/L16;rate=24000";
+                        
+                        if (base64Audio) {
+                            const rateMatch = mimeType.match(/rate=(\d+)/);
+                            const sampleRate = rateMatch ? parseInt(rateMatch[1], 10) : 24000;
+                            const pcmBytes = base64ToUint8Array(base64Audio);
+                            return pcmToWav(pcmBytes, sampleRate);
+                        }
+                    }
+                } catch (e) {
+                    console.log("TTS fetch retry attempt:", i + 1, e);
+                }
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+            return null;
+        }
+
+        function base64ToUint8Array(base64) {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        function pcmToWav(pcmBytes, sampleRate) {
+            const buffer = new ArrayBuffer(44 + pcmBytes.length);
+            const view = new DataView(buffer);
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmBytes.length, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmBytes.length, true);
+            
+            const outputBytes = new Uint8Array(buffer);
+            outputBytes.set(pcmBytes, 44);
+            return new Blob([outputBytes], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        // アラート表示
+        function showFloatingAlert(text) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = "absolute top-4 left-1/2 transform -translate-x-1/2 bg-rose-500 text-white font-bold py-2 px-4 rounded-full text-xs shadow-lg animate__animated animate__fadeInDown z-50";
+            alertDiv.innerText = text;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => {
+                alertDiv.classList.replace('animate__fadeInDown', 'animate__fadeOutUp');
+                setTimeout(() => alertDiv.remove(), 500);
+            }, 2500);
+        }
+
+        // ゲームオーバー/クリア判定
+        function endGame(success) {
+            playScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            finalScore.textContent = `${happiness}%`;
+
+            if (success && happiness >= 80) {
+                resultEmoji.textContent = "👑";
+                resultTitle.textContent = "ご機嫌MAX！";
+                resultDesc.textContent = "あなたとミミちゃんは、もう一生離れられないほどの大親友になりました！ミミちゃんはあなたのことが世界で一番大好きです！";
+                finalImpression.textContent = "最高の大親友 🎀";
+                finalImpression.className = "font-bold text-pink-600";
+            } else if (success && happiness >= 50) {
+                resultEmoji.textContent = "🐾";
+                resultTitle.textContent = "仲良しクリア！";
+                resultDesc.textContent = "ミミちゃんはあなたと遊べてとても楽しかったようです。また明日も一緒におしゃべりして遊ぼうね、と嬉しそうにしています！";
+                finalImpression.textContent = "お気に入りのお友達 🌸";
+                finalImpression.className = "font-bold text-rose-500";
+            } else if (success && happiness > 0) {
+                resultEmoji.textContent = "🐱";
+                resultTitle.textContent = "なかよし一歩手前";
+                resultDesc.textContent = "少しミミちゃんを怒らせてしまうこともありましたが、なんとか仲良く一日を終えました。次はもっとミミちゃんが喜ぶ言葉をかけてあげてね。";
+                finalImpression.textContent = "ふつうの知り合い 🍵";
+                finalImpression.className = "font-bold text-amber-500";
+            } else {
+                resultEmoji.textContent = "💔";
+                resultTitle.textContent = "ゲームオーバー";
+                resultDesc.textContent = "あちゃー…ミミちゃんをひどく怒らせるか、悲しませてしまいました。ミミちゃんはすねて、どこかへ行ってしまいました…。";
+                finalImpression.textContent = "ちょっと苦手な人 💧";
+                finalImpression.className = "font-bold text-slate-500";
+            }
+        }
+
+        // リトライ
+        retryBtn.addEventListener('click', () => {
+            resultScreen.classList.add('hidden');
+            setupScreen.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
